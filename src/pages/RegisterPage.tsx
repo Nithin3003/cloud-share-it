@@ -8,55 +8,36 @@ import { Label } from "@/components/ui/label";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtSign, Lock, User, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const RegisterPage = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string }>({});
-  const { register, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
   const navigate = useNavigate();
-
-  const validateForm = () => {
-    const newErrors: { name?: string; email?: string; password?: string; confirmPassword?: string } = {};
-    
-    if (!name) {
-      newErrors.name = "Name is required";
-    }
-    
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email is invalid";
-    }
-    
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setIsLoading(true);
     
     try {
-      await register(email, password, name);
-      navigate("/dashboard");
-    } catch (error) {
+      await signUp(email, password, name);
+      toast.success("Account created successfully! Please check your email to verify your account.");
+      navigate("/login");
+    } catch (error: any) {
       console.error("Registration error:", error);
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -84,13 +65,10 @@ const RegisterPage = () => {
                     className="pl-10"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    required
                   />
                 </div>
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name}</p>
-                )}
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
@@ -102,13 +80,10 @@ const RegisterPage = () => {
                     className="pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                   />
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -120,13 +95,11 @@ const RegisterPage = () => {
                     className="pl-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
                   />
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
               </div>
-              
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
@@ -138,11 +111,9 @@ const RegisterPage = () => {
                     className="pl-10"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
                   />
                 </div>
-                {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
-                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">

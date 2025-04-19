@@ -8,43 +8,28 @@ import { Label } from "@/components/ui/label";
 import { NavBar } from "@/components/NavBar";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtSign, Lock, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const { login, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
   const navigate = useNavigate();
-
-  const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email is invalid";
-    }
-    
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
+    setIsLoading(true);
     
     try {
-      await login(email, password);
+      await signIn(email, password);
       navigate("/dashboard");
+      toast.success("Logged in successfully");
     } catch (error) {
       console.error("Login error:", error);
+      toast.error("Failed to login. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -73,11 +58,9 @@ const LoginPage = () => {
                     className="pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                   />
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -90,11 +73,9 @@ const LoginPage = () => {
                     className="pl-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                   />
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
               </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
