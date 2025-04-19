@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +15,6 @@ import {
   FileImage,
   FileAudio,
   FileVideo,
-  FilePdf,
   FileArchive,
   MoreVertical,
   Trash2,
@@ -48,7 +46,7 @@ export function FileList() {
     if (type.startsWith("image/")) return <FileImage className="h-5 w-5" />;
     if (type.startsWith("audio/")) return <FileAudio className="h-5 w-5" />;
     if (type.startsWith("video/")) return <FileVideo className="h-5 w-5" />;
-    if (type === "application/pdf") return <FilePdf className="h-5 w-5" />;
+    if (type === "application/pdf") return <FileText className="h-5 w-5" />; // Changed from FilePdf to FileText
     if (type.includes("zip") || type.includes("archive") || type.includes("compressed")) 
       return <FileArchive className="h-5 w-5" />;
     if (type.includes("text") || type.includes("document")) 

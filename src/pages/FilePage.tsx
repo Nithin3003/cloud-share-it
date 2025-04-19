@@ -6,7 +6,7 @@ import { NavBar } from "@/components/NavBar";
 import { useFile } from "@/contexts/FileContext";
 import { File as FileType } from "@/types";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Download, FileIcon, FileText, FileImage, FileAudio, FileVideo, FilePdf, FileArchive, AlertCircle } from "lucide-react";
+import { Download, FileIcon, FileText, FileImage, FileAudio, FileVideo, FileArchive, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const FilePage = () => {
@@ -62,7 +62,7 @@ const FilePage = () => {
     if (type.startsWith("image/")) return <FileImage className="h-16 w-16" />;
     if (type.startsWith("audio/")) return <FileAudio className="h-16 w-16" />;
     if (type.startsWith("video/")) return <FileVideo className="h-16 w-16" />;
-    if (type === "application/pdf") return <FilePdf className="h-16 w-16" />;
+    if (type === "application/pdf") return <FileText className="h-16 w-16" />; // Changed from FilePdf to FileText
     if (type.includes("zip") || type.includes("archive") || type.includes("compressed")) 
       return <FileArchive className="h-16 w-16" />;
     if (type.includes("text") || type.includes("document")) 
