@@ -1,17 +1,18 @@
 
-import React, { createContext, useContext, useState } from 'react';
-import { FileWithURL } from '@/types/supabase';
+import React, { createContext, useContext } from 'react';
+import { FileWithURL, mapSharedFileToFile } from '@/types/supabase';
+import { File } from '@/types';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface FilesContextType {
-  files: FileWithURL[];
+  files: File[];
   isLoading: boolean;
-  uploadFile: (file: File) => Promise<FileWithURL>;
+  uploadFile: (file: globalThis.File) => Promise<File>;
   deleteFile: (id: string) => Promise<void>;
-  getFileById: (id: string) => FileWithURL | undefined;
+  getFileById: (id: string) => File | undefined;
 }
 
 const FilesContext = createContext<FilesContextType | undefined>(undefined);
@@ -21,7 +22,7 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const queryClient = useQueryClient();
 
   // Fetch files query
-  const { data: files = [], isLoading } = useQuery({
+  const { data: filesWithURL = [], isLoading } = useQuery({
     queryKey: ['files', user?.id],
     queryFn: async (): Promise<FileWithURL[]> => {
       if (!user) throw new Error('No user');
@@ -52,10 +53,13 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     enabled: !!user,
   });
+  
+  // Map to the File type expected by components
+  const files = filesWithURL.map(mapSharedFileToFile);
 
   // Upload mutation
   const uploadMutation = useMutation({
-    mutationFn: async (file: File): Promise<FileWithURL> => {
+    mutationFn: async (file: globalThis.File): Promise<File> => {
       if (!user) throw new Error('Must be logged in to upload');
 
       // Upload file to storage
@@ -97,10 +101,13 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .from('shared_files')
         .createSignedUrl(path, 60 * 60);
 
-      return {
+      const fileWithURL: FileWithURL = {
         ...fileData,
         url: signedUrlData?.signedUrl || '',
       };
+
+      // Convert to the File type
+      return mapSharedFileToFile(fileWithURL);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['files'] });
@@ -115,14 +122,14 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const file = files.find(f => f.id === id);
-      if (!file) throw new Error('File not found');
+      const fileWithURL = filesWithURL.find(f => f.id === id);
+      if (!fileWithURL) throw new Error('File not found');
 
       // Delete from storage
       const { error: storageError } = await supabase
         .storage
         .from('shared_files')
-        .remove([file.storage_path]);
+        .remove([fileWithURL.storage_path]);
 
       if (storageError) throw storageError;
 

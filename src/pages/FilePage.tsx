@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -20,11 +19,7 @@ const FilePage = () => {
       try {
         if (id) {
           const fileData = await getPublicFile(id);
-          if (fileData) {
-            setFile(fileData);
-          } else {
-            setError("File not found or has been removed.");
-          }
+          setFile(fileData);
         }
       } catch (err) {
         console.error("Error fetching file:", err);

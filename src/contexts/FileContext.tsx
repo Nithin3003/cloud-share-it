@@ -1,18 +1,19 @@
 
 import React, { createContext, useContext } from 'react';
-import { FileWithURL } from '@/types/supabase';
+import { FileWithURL, mapSharedFileToFile } from '@/types/supabase';
+import { File } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
 interface FileContextType {
-  getPublicFile: (id: string) => Promise<FileWithURL>;
+  getPublicFile: (id: string) => Promise<File>;
   isLoading: boolean;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
 
 export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const getPublicFile = async (id: string): Promise<FileWithURL> => {
+  const getPublicFile = async (id: string): Promise<File> => {
     const { data: file, error } = await supabase
       .from('shared_files')
       .select('*')
@@ -28,10 +29,13 @@ export const FileProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .from('shared_files')
       .createSignedUrl(file.storage_path, 60 * 60);
 
-    return {
+    const fileWithUrl: FileWithURL = {
       ...file,
       url: data?.signedUrl || '',
     };
+
+    // Convert to the File type
+    return mapSharedFileToFile(fileWithUrl);
   };
 
   return (
