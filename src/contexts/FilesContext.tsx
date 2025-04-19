@@ -1,97 +1,159 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { File } from '@/types';
+import React, { createContext, useContext, useState } from 'react';
+import { FileWithURL } from '@/types/supabase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface FilesContextType {
-  files: File[];
+  files: FileWithURL[];
   isLoading: boolean;
-  uploadFile: (file: globalThis.File) => Promise<File>;
-  getFileById: (id: string) => File | undefined;
-  deleteFile: (id: string) => void;
+  uploadFile: (file: File) => Promise<FileWithURL>;
+  deleteFile: (id: string) => Promise<void>;
+  getFileById: (id: string) => FileWithURL | undefined;
 }
 
 const FilesContext = createContext<FilesContextType | undefined>(undefined);
 
 export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [files, setFiles] = useState<File[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Load files from localStorage when user changes
-  useEffect(() => {
-    if (user) {
-      const storedFiles = localStorage.getItem(`files_${user.id}`);
-      if (storedFiles) {
-        setFiles(JSON.parse(storedFiles).map((file: any) => ({
-          ...file,
-          uploadedAt: new Date(file.uploadedAt)
-        })));
-      }
-    } else {
-      setFiles([]);
-    }
-  }, [user]);
+  // Fetch files query
+  const { data: files = [], isLoading } = useQuery({
+    queryKey: ['files', user?.id],
+    queryFn: async (): Promise<FileWithURL[]> => {
+      if (!user) throw new Error('No user');
 
-  // Save files to localStorage whenever they change
-  useEffect(() => {
-    if (user && files.length > 0) {
-      localStorage.setItem(`files_${user.id}`, JSON.stringify(files));
-    }
-  }, [files, user]);
+      const { data: files, error } = await supabase
+        .from('shared_files')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const uploadFile = async (file: globalThis.File): Promise<File> => {
-    if (!user) {
-      throw new Error('User must be logged in to upload files');
-    }
+      if (error) throw error;
 
-    setIsLoading(true);
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Create a fake file URL (in a real app, we would upload to a server)
-      const fileId = `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const fakeUrl = URL.createObjectURL(file);
-      
-      // In a real app, this would be a URL to your API
-      const shareUrl = `${window.location.origin}/file/${fileId}`;
-      
-      const newFile: File = {
-        id: fileId,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: fakeUrl,
-        shareUrl,
-        uploadedAt: new Date(),
-        userId: user.id,
+      // Get signed URLs for each file
+      const filesWithUrls = await Promise.all(
+        files.map(async (file) => {
+          const { data } = await supabase
+            .storage
+            .from('shared_files')
+            .createSignedUrl(file.storage_path, 60 * 60); // 1 hour expiry
+
+          return {
+            ...file,
+            url: data?.signedUrl || '',
+          };
+        })
+      );
+
+      return filesWithUrls;
+    },
+    enabled: !!user,
+  });
+
+  // Upload mutation
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File): Promise<FileWithURL> => {
+      if (!user) throw new Error('Must be logged in to upload');
+
+      // Upload file to storage
+      const filename = `${Date.now()}_${file.name}`;
+      const path = `${user.id}/${filename}`;
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from('shared_files')
+        .upload(path, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl: shareUrl } } = supabase
+        .storage
+        .from('shared_files')
+        .getPublicUrl(path);
+
+      // Create database entry
+      const { data: fileData, error: dbError } = await supabase
+        .from('shared_files')
+        .insert({
+          filename: file.name,
+          storage_path: path,
+          share_url: shareUrl,
+          size: file.size,
+          type: file.type,
+          user_id: user.id,
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      // Get signed URL for immediate use
+      const { data: signedUrlData } = await supabase
+        .storage
+        .from('shared_files')
+        .createSignedUrl(path, 60 * 60);
+
+      return {
+        ...fileData,
+        url: signedUrlData?.signedUrl || '',
       };
-      
-      setFiles(prevFiles => [newFile, ...prevFiles]);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
       toast.success('File uploaded successfully');
-      return newFile;
-    } catch (error) {
-      toast.error('Failed to upload file');
+    },
+    onError: (error) => {
       console.error('Upload error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      toast.error('Failed to upload file');
+    },
+  });
 
-  const getFileById = (id: string) => {
-    return files.find(file => file.id === id);
-  };
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const file = files.find(f => f.id === id);
+      if (!file) throw new Error('File not found');
 
-  const deleteFile = (id: string) => {
-    setFiles(prevFiles => prevFiles.filter(file => file.id !== id));
-    toast.success('File deleted');
-  };
+      // Delete from storage
+      const { error: storageError } = await supabase
+        .storage
+        .from('shared_files')
+        .remove([file.storage_path]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('shared_files')
+        .delete()
+        .eq('id', id);
+
+      if (dbError) throw dbError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      toast.success('File deleted');
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete file');
+    },
+  });
+
+  const getFileById = (id: string) => files.find(file => file.id === id);
 
   return (
-    <FilesContext.Provider value={{ files, isLoading, uploadFile, getFileById, deleteFile }}>
+    <FilesContext.Provider value={{
+      files,
+      isLoading,
+      uploadFile: uploadMutation.mutateAsync,
+      deleteFile: deleteMutation.mutateAsync,
+      getFileById
+    }}>
       {children}
     </FilesContext.Provider>
   );
