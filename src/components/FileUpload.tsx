@@ -2,7 +2,7 @@
 import React, { useCallback, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileIcon, X } from "lucide-react";
+import { Upload, FileIcon, X, Copy, Link } from "lucide-react";
 import { useFiles } from "@/contexts/FilesContext";
 import { toast } from 'sonner';
 import {
@@ -66,6 +66,7 @@ export function FileUpload() {
       setSelectedFile(null);
     } catch (error) {
       console.error('Upload failed:', error);
+      toast.error('Upload failed. Please try again.');
     }
   };
 
@@ -75,12 +76,25 @@ export function FileUpload() {
     toast.success('Link copied to clipboard');
   };
 
+  // Create a shareable link that points to our file page
+  const getFileLinkForSharing = () => {
+    if (!uploadedFile) return '';
+    
+    // Extract the file ID from the share URL
+    const parts = uploadedFile.shareUrl.split('/');
+    const fileId = parts[parts.length - 1].split('?')[0]; // Remove any query params
+    
+    // Construct a link to our FilePage with the ID
+    const origin = window.location.origin;
+    return `${origin}/file/${fileId}`;
+  };
+
   return (
     <>
       <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="p-6">
           <div
-            className={`dropzone flex flex-col items-center justify-center min-h-[200px] ${dragActive ? 'active' : ''}`}
+            className={`dropzone flex flex-col items-center justify-center min-h-[200px] border-2 border-dashed rounded-lg p-6 ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}
             onDragEnter={handleDrag}
             onDragOver={handleDrag}
             onDragLeave={handleDrag}
@@ -142,9 +156,18 @@ export function FileUpload() {
           </DialogHeader>
           <div className="flex flex-col space-y-4 py-4">
             <p className="text-sm font-medium">File: {uploadedFile?.name}</p>
-            <div className="flex gap-2">
-              <Input value={uploadedFile?.shareUrl} readOnly />
-              <Button onClick={copyToClipboard}>Copy</Button>
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <Link className="h-4 w-4" />
+                Share Link:
+              </label>
+              <div className="flex gap-2">
+                <Input value={getFileLinkForSharing()} readOnly />
+                <Button onClick={copyToClipboard}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

@@ -122,14 +122,14 @@ export const FilesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const fileWithURL = filesWithURL.find(f => f.id === id);
-      if (!fileWithURL) throw new Error('File not found');
+      const fileToDelete = files.find(f => f.id === id);
+      if (!fileToDelete) throw new Error('File not found');
 
       // Delete from storage
       const { error: storageError } = await supabase
         .storage
         .from('shared_files')
-        .remove([fileWithURL.storage_path]);
+        .remove([fileToDelete.shareUrl.split('/').pop() || '']);
 
       if (storageError) throw storageError;
 

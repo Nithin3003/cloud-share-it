@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,8 @@ import {
   FileArchive,
   MoreVertical,
   Trash2,
-  Link
+  Link,
+  Download
 } from "lucide-react";
 import { useFiles } from "@/contexts/FilesContext";
 import { File } from "@/types";
@@ -46,7 +48,7 @@ export function FileList() {
     if (type.startsWith("image/")) return <FileImage className="h-5 w-5" />;
     if (type.startsWith("audio/")) return <FileAudio className="h-5 w-5" />;
     if (type.startsWith("video/")) return <FileVideo className="h-5 w-5" />;
-    if (type === "application/pdf") return <FileText className="h-5 w-5" />; // Changed from FilePdf to FileText
+    if (type === "application/pdf") return <FileText className="h-5 w-5" />; 
     if (type.includes("zip") || type.includes("archive") || type.includes("compressed")) 
       return <FileArchive className="h-5 w-5" />;
     if (type.includes("text") || type.includes("document")) 
@@ -55,8 +57,16 @@ export function FileList() {
   };
 
   const copyLinkToClipboard = (file: File) => {
-    navigator.clipboard.writeText(file.shareUrl);
+    // Create a shareable link to the file page
+    const origin = window.location.origin;
+    const fileLink = `${origin}/file/${file.id}`;
+    
+    navigator.clipboard.writeText(fileLink);
     toast.success("Link copied to clipboard");
+  };
+
+  const openFile = (file: File) => {
+    window.open(`/file/${file.id}`, '_blank');
   };
 
   const filteredFiles = files.filter(file => 
@@ -105,7 +115,7 @@ export function FileList() {
             </TableHeader>
             <TableBody>
               {filteredFiles.map((file) => (
-                <TableRow key={file.id}>
+                <TableRow key={file.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openFile(file)}>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {getFileIcon(file.type)}
@@ -116,7 +126,7 @@ export function FileList() {
                     {formatDistanceToNow(new Date(file.uploadedAt), { addSuffix: true })}
                   </TableCell>
                   <TableCell>{formatFileSize(file.size)}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end">
                       <Button
                         variant="ghost"
@@ -135,7 +145,11 @@ export function FileList() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => copyLinkToClipboard(file)}>
                             <Copy className="mr-2 h-4 w-4" />
-                            Copy link
+                            Copy share link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.open(file.url, '_blank')}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => deleteFile(file.id)}

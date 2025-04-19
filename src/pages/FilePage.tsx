@@ -57,7 +57,7 @@ const FilePage = () => {
     if (type.startsWith("image/")) return <FileImage className="h-16 w-16" />;
     if (type.startsWith("audio/")) return <FileAudio className="h-16 w-16" />;
     if (type.startsWith("video/")) return <FileVideo className="h-16 w-16" />;
-    if (type === "application/pdf") return <FileText className="h-16 w-16" />; // Changed from FilePdf to FileText
+    if (type === "application/pdf") return <FileText className="h-16 w-16" />;
     if (type.includes("zip") || type.includes("archive") || type.includes("compressed")) 
       return <FileArchive className="h-16 w-16" />;
     if (type.includes("text") || type.includes("document")) 
