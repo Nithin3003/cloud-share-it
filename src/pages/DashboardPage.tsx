@@ -8,10 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UploadCloud, FileText } from "lucide-react";
 
 const DashboardPage = () => {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
 
   // If auth is still loading, render nothing yet to avoid flashing content
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
         <NavBar />
@@ -30,12 +30,15 @@ const DashboardPage = () => {
     return <Navigate to="/login" />;
   }
 
+  // Get user display name from email if name not available
+  const displayName = user.email ? user.email.split('@')[0] : 'User';
+
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
       
       <main className="flex-1 container py-8">
-        <h1 className="text-3xl font-bold mb-8">Welcome, {user.name || user.email.split('@')[0]}</h1>
+        <h1 className="text-3xl font-bold mb-8">Welcome, {displayName}</h1>
         
         <Tabs defaultValue="upload" className="w-full">
           <TabsList className="mb-8">
