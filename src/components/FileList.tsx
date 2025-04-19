@@ -64,6 +64,27 @@ export function FileList() {
     navigator.clipboard.writeText(fileLink);
     toast.success("Link copied to clipboard");
   };
+  
+  const handleDownload = (file: File, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Create an anchor element and set the download attribute to force download
+      const link = document.createElement("a");
+      link.href = file.url;
+      link.download = file.name; // This attribute forces download instead of navigation
+      link.target = "_blank"; // Open in new tab
+      link.rel = "noopener noreferrer"; // Security best practice
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Download started");
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.error("Failed to download file");
+    }
+  };
 
   const openFile = (file: File) => {
     window.open(`/file/${file.id}`, '_blank');
@@ -147,7 +168,7 @@ export function FileList() {
                             <Copy className="mr-2 h-4 w-4" />
                             Copy share link
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => window.open(file.url, '_blank')}>
+                          <DropdownMenuItem onClick={(e) => handleDownload(file, e)}>
                             <Download className="mr-2 h-4 w-4" />
                             Download
                           </DropdownMenuItem>

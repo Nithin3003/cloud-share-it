@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -34,10 +35,12 @@ const FilePage = () => {
     if (!file) return;
     
     try {
-      // Create an anchor element and trigger download
+      // Create an anchor element and set the download attribute to force download
       const link = document.createElement("a");
       link.href = file.url;
-      link.download = file.name;
+      link.download = file.name; // This attribute forces download instead of navigation
+      link.target = "_blank"; // Open in new tab
+      link.rel = "noopener noreferrer"; // Security best practice
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
